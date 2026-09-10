@@ -1,0 +1,19 @@
+# Artefactos de compilación (se regeneran con PyInstaller)
+build/
+dist/
+*.spec.bak
+
+# Backups y archivos comprimidos de compilaciones previas
+dist.rar
+*_backup_*.exe
+
+# Cache de Python
+__pycache__/
+*.pyc
+
+# Cache de vista previa (se regenera en tiempo de ejecución vía Labelary)
+preview_cache/
+
+# Datos internos/operativos (no deben ir al repositorio)
+*.xlsx
+*.xls
