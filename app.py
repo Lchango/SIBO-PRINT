@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import textwrap
+import datetime
 import win32print
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -755,6 +756,18 @@ class ZebraPrintApp(tk.Tk):
             self.combo_printer['values'] = printers
             if printers:
                 self.combo_printer.current(0)
+
+            driver_zebra_detectado = any(
+                re.search(r'zebra|zdesigner|zpl', p, re.IGNORECASE) for p in printers
+            )
+            if not driver_zebra_detectado:
+                messagebox.showwarning(
+                    "Driver de impresora no encontrado",
+                    "No se detectó ningún driver de impresora Zebra/ZPL instalado en este equipo.\n\n"
+                    "Para poder imprimir etiquetas necesitas instalar el driver de tu impresora "
+                    "térmica (por ejemplo \"ZDesigner ZD230-203dpi ZPL\") antes de continuar.\n\n"
+                    "Mientras tanto puedes seguir usando la Vista Previa Web para revisar el diseño."
+                )
         except Exception as e:
             print("Error cargando impresoras:", e)
 
@@ -1062,7 +1075,7 @@ class ZebraPrintApp(tk.Tk):
         except AttributeError:
             resample_filter = Image.ANTIALIAS
 
-        margin = 24  # espacio reservado para la sombra alrededor de la etiqueta
+        margin = 4  # espacio reservado para la sombra alrededor de la etiqueta
         img.thumbnail((max(1, width - margin), max(1, height - margin)), resample_filter)
 
         composed = self._compose_label_with_shadow(img, width, height)
@@ -1214,11 +1227,32 @@ class ZebraPrintApp(tk.Tk):
     def _get_series_value(self, row_series, col_name):
         val = row_series.get(col_name)
         if notna(val):
+            if isinstance(val, datetime.datetime):
+                if val.hour == 0 and val.minute == 0 and val.second == 0:
+                    return val.strftime("%d/%m/%Y")
+                return val.strftime("%d/%m/%Y %H:%M:%S")
+            if isinstance(val, datetime.date):
+                return val.strftime("%d/%m/%Y")
             return str(val).strip()
+        return ""
+
+    def _resolve_cantidad_auto(self, row_series):
+        """Busca cantidad/unidad probando varias columnas (E, G, I) en orden y usa la primera con datos,
+        ya que en la práctica el usuario a veces la escribe en una u otra columna."""
+        if self.df is None:
+            return ""
+        for idx in (4, 6, 8):
+            if idx < len(self.df.columns):
+                value = self._get_series_value(row_series, self.df.columns[idx])
+                if value:
+                    return value
         return ""
 
     def _resolve_placeholder_value(self, var_name, row_series, max_len=None):
         """Resuelve el valor de un placeholder PRN y soporta variantes tipo vlsCampo2A."""
+        if var_name.strip().lower() == 'vlscantidadauto':
+            return self._resolve_cantidad_auto(row_series)
+
         # 1) Mapeo directo (compatibilidad actual)
         if var_name in self.map_columnas:
             value = self._get_series_value(row_series, self.map_columnas[var_name])

@@ -6,6 +6,7 @@ dist/
 # Backups y archivos comprimidos de compilaciones previas
 dist.rar
 *_backup_*.exe
+SIBO_PRINT_Portable.zip
 
 # Cache de Python
 __pycache__/
